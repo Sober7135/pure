@@ -8,22 +8,23 @@
 
 Most prompts are cluttered, ugly and slow. We wanted something visually pleasing that stayed out of our way.
 
+> **Git-free fork:** This version intentionally strips out all Git features and the `zsh-async` worker from upstream Pure. The prompt never spawns background Git commands and only needs `pure.zsh`; the legacy `async.zsh` file is kept solely for compatibility with existing plugin managers.
+
 ### Why?
 
 - Comes with the perfect prompt character.
   Author went through the whole Unicode range to find it.
-- Shows `git` branch and whether it's dirty (with a `*`).
-- Indicates when you have unpushed/unpulled `git` commits with up/down arrows. *(Check is done asynchronously!)*
 - Prompt character turns red if the last command didn't exit with `0`.
 - Command execution time will be displayed if it exceeds the set threshold.
 - Username and host only displayed when in an SSH session or a container.
 - Shows the current path in the title and the [current folder & command](screenshot-title-cmd.png) when a process is running.
 - Support VI-mode indication by reverse prompt symbol (Zsh 5.3+).
 - Makes an excellent starting point for your own custom prompt.
+- Intentionally avoids all Git/VCS integrations or background fetches.
 
 ## Install
 
-Can be installed with `npm` (not `yarn`) or manually. Requires Git 2.15.2+ and ZSH 5.2+. Older versions of ZSH are known to work, but they are **not** recommended.
+Can be installed with `npm` (not `yarn`) or manually. Requires ZSH 5.2+. Older versions of ZSH are known to work, but they are **not** recommended.
 
 ### npm
 
@@ -75,24 +76,10 @@ prompt pure
 | Option                           | Description                                                                                    | Default value  |
 | :------------------------------- | :--------------------------------------------------------------------------------------------- | :------------- |
 | **`PURE_CMD_MAX_EXEC_TIME`**     | The max execution time of a process before its run time is shown when it exits.                | `5` seconds    |
-| **`PURE_GIT_PULL`**              | Prevents Pure from checking whether the current Git remote has been updated.                   | `1`            |
-| **`PURE_GIT_UNTRACKED_DIRTY`**   | Do not include untracked files in dirtiness check. Mostly useful on large repos (like WebKit). | `1`            |
-| **`PURE_GIT_DELAY_DIRTY_CHECK`** | Time in seconds to delay git dirty checking when `git status` takes > 5 seconds.               | `1800` seconds |
 | **`PURE_PROMPT_SYMBOL`**         | Defines the prompt symbol.                                                                     | `❯`            |
 | **`PURE_PROMPT_VICMD_SYMBOL`**   | Defines the prompt symbol used when the `vicmd` keymap is active (VI-mode).                    | `❮`            |
-| **`PURE_GIT_DOWN_ARROW`**        | Defines the git down arrow symbol.                                                             | `⇣`            |
-| **`PURE_GIT_UP_ARROW`**          | Defines the git up arrow symbol.                                                               | `⇡`            |
-| **`PURE_GIT_STASH_SYMBOL`**      | Defines the git stash symbol.                                                                  | `≡`            |
 
 ## Zstyle options
-
-Showing git stash status as part of the prompt is not activated by default. To activate this you'll need to opt in via `zstyle`:
-
-`zstyle :prompt:pure:git:stash show yes`
-
-You can set Pure to only `git fetch` the upstream branch of the current local branch. In some cases, this can result in faster updates for Git arrows, but for most users, it's better to leave this setting disabled. You can enable it with:
-
-`zstyle :prompt:pure:git:fetch only_upstream yes`
 
 `nix-shell` integration adds the shell name to the prompt when used from within a nix shell. It is enabled by default, you can disable it with:
 
@@ -107,12 +94,6 @@ As explained in ZSH's [manual](http://zsh.sourceforge.net/Doc/Release/Zsh-Line-E
 
 Colors can be changed by using [`zstyle`](http://zsh.sourceforge.net/Doc/Release/Zsh-Modules.html#The-zsh_002fzutil-Module) with a pattern of the form `:prompt:pure:$color_name` and style `color`. The color names, their default, and what part they affect are:
 - `execution_time` (yellow) - The execution time of the last command when exceeding `PURE_CMD_MAX_EXEC_TIME`.
-- `git:arrow` (cyan) - For `PURE_GIT_UP_ARROW` and `PURE_GIT_DOWN_ARROW`.
-- `git:stash` (cyan) - For `PURE_GIT_STASH_SYMBOL`.
-- `git:branch` (242) - The name of the current branch when in a Git repository.
-- `git:branch:cached` (red) - The name of the current branch when the data isn't fresh.
-- `git:action` (yellow) - The current action in progress (cherry-pick, rebase, etc.) when in a Git repository.
-- `git:dirty` (218) - The asterisk showing the branch is dirty.
 - `host` (242) - The hostname when on a remote machine.
 - `path` (blue) - The current path, for example, `PWD`.
 - `prompt:error` (red) - The `PURE_PROMPT_SYMBOL` when the previous command has *failed*.
@@ -129,14 +110,9 @@ The following diagram shows where each color is applied on the prompt:
 ┌────────────────────────────────────────────────────── user
 │      ┌─────────────────────────────────────────────── host
 │      │           ┌─────────────────────────────────── path
-│      │           │          ┌──────────────────────── git:branch
-│      │           │          │     ┌────────────────── git:dirty
-│      │           │          │     │ ┌──────────────── git:action
-│      │           │          │     │ │        ┌─────── git:arrow
-│      │           │          │     │ │        │ ┌───── git:stash
-│      │           │          │     │ │        │ │ ┌─── execution_time
-│      │           │          │     │ │        │ │ │
-zaphod@heartofgold ~/dev/pure master* rebase-i ⇡ ≡ 42s
+│      │           │          ┌──────────────────────── execution_time
+│      │           │          │
+zaphod@heartofgold ~/dev/pure 42s
 venv ❯
 │    │
 │    └───────────────────────────────────────────────── prompt
@@ -171,9 +147,6 @@ zstyle :prompt:pure:path color white
 # change the color for both `prompt:success` and `prompt:error`
 zstyle ':prompt:pure:prompt:*' color cyan
 
-# turn on git stash status
-zstyle :prompt:pure:git:stash show yes
-
 prompt pure
 ```
 
@@ -204,14 +177,13 @@ Add `prompt pure` to your `~/.zpreztorc`.
 
 ### [zim](https://github.com/Eriner/zim)
 
-Add `zmodule sindresorhus/pure --source async.zsh --source pure.zsh` to your `.zimrc` and run `zimfw install`.
+Add `zmodule sindresorhus/pure --source pure.zsh` to your `.zimrc` and run `zimfw install`.
 
 ### [zplug](https://github.com/zplug/zplug)
 
 Update your `.zshrc` file with the following two lines:
 
 ```sh
-zplug mafredri/zsh-async, from:github
 zplug sindresorhus/pure, use:pure.zsh, from:github, as:theme
 ```
 
@@ -220,7 +192,7 @@ zplug sindresorhus/pure, use:pure.zsh, from:github, as:theme
 Update your `.zshrc` file with the following two lines (order matters):
 
 ```sh
-zinit ice compile'(pure|async).zsh' pick'async.zsh' src'pure.zsh'
+zinit ice compile'pure.zsh' src'pure.zsh'
 zinit light sindresorhus/pure
 ```
 
